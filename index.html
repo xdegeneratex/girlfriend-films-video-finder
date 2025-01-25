@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="https://bunkr.fi/images/fav.ico" type="image/x-icon">
+    <title>Girlfriend Films - Video Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
+            margin: 0;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            text-align: center;
+        }
+        .search-bar-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .search-bar {
+            padding: 10px;
+            width: 100%;
+            max-width: 400px;
+            outline: none;
+            border: 1px solid #333;
+            border-radius: 1px;
+            font-size: 16px;
+            margin-right: 10px;
+            background-color: #2c2c2c;
+            color: #e0e0e0;
+        }
+        .button-container {
+            display: flex;
+            gap: 10px;
+        }
+        .button-container button {
+            padding: 10px 20px;
+            background-color: #6200ea;
+            color: white;
+            border: none;
+            border-radius: 1px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .button-container button:hover {
+            background-color: #3700b3;
+        }
+        .grid-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .category-container {
+            width: 100%;
+        }
+        .category {
+            font-size: 24px;
+            font-weight: bold;
+            color: #bb86fc;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+        .file-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .file-item {
+            padding: 20px;
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 1px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            flex-basis: calc(20% - 20px);
+        }
+        .file-item:hover {
+            transform: scale(1.05);
+        }
+        .file-item.hidden {
+            display: none;
+        }
+        .thumbnail {
+            max-width: 100%;
+            height: auto;
+            border-radius: 1px;
+            margin-bottom: 15px;
+        }
+        .file-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #e0e0e0;
+            margin: 10px 0;
+        }
+        .file-size {
+            font-size: 14px;
+            font-weight: bold;
+            color: #3c9bf3;
+            margin: 5px 0;
+        }
+        .view-button {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background-color: #6200ea;
+            color: white;
+            text-decoration: none;
+            border-radius: 1px;
+            font-size: 14px;
+        }
+        .view-button:hover {
+            background-color: #7e4cf5;
+        }
+        .file-link {
+            display: block;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #bb86fc;
+            text-decoration: none;
+        }
+        .file-link:hover {
+            text-decoration: underline;
+        }
+        .filtered-status {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #e2ccfc;
+        }
+        hr {
+            border: 1px solid rgb(24, 22, 22);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="search-bar-container" style="display: none">
+            <input type="text" id="searchInput" class="search-bar" placeholder="Search videos..." onkeyup="filterFiles()">
+            <div class="button-container">
+                <button onclick="copyDownloadLinksForFiltered()">Copy Links</button>
+            </div>
+        </div>
+        <div class="filtered-status" id="filteredStatus">
+            Loading...
+        </div>
+        <div class="grid-wrapper" id="fileGrid" style="display: none"></div>
+    </div>
+
+    <script src="./metadata.js"></script>
+
+    <script>
+        document.body.style.paddingTop = '20px';
+        
+        document.querySelector('.grid-wrapper').style.marginBottom = '20px';
+        document.querySelector('.filtered-status').style.marginBottom = '20px';
+        document.querySelector('.search-bar-container').style.display = 'flex';
+        document.querySelector('.grid-wrapper').style.display = 'flex';
+
+        const filesData = window.files;
+
+        const totalFiles = filesData.length;
+
+        function groupFilesByCategory(files) {
+            const categories = {};
+            files.forEach(file => {
+                if (!categories[file.category]) {
+                    categories[file.category] = [];
+                }
+                categories[file.category].push(file);
+            });
+            return categories;
+        }
+
+        function populateFileGrid(filteredFiles, searchInput = '') {
+            const fileGrid = document.getElementById('fileGrid');
+            fileGrid.innerHTML = '';
+
+            const groupedFiles = groupFilesByCategory(filteredFiles);
+
+            const highlight = (query, subject, color = "dodgerblue") => {
+                try {
+                    return subject.replace(new RegExp(`(${query})`, 'ig'), `<span style="color: ${color}">$1</span>`);
+                } catch (error) {
+                    return subject;
+                }
+            }
+
+            for (const category in groupedFiles) {
+                const filesInCategory = groupedFiles[category];
+                if (filesInCategory.length === 0) continue;
+
+                const categoryContainer = document.createElement('div');
+                categoryContainer.classList.add('category-container');
+
+                const categoryTitle = document.createElement('div');
+                categoryTitle.classList.add('category');
+                categoryTitle.innerHTML = `<hr />${category}<hr/>`;
+                categoryContainer.appendChild(categoryTitle);
+
+                const fileGridForCategory = document.createElement('div');
+                fileGridForCategory.classList.add('file-grid');
+
+                filesInCategory.forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.classList.add('file-item');
+
+                    const name = highlight(searchInput, file.name);
+                    const size = highlight(searchInput, file.size);
+
+                    fileItem.innerHTML = `
+                        <img src="${file.thumbnail}" alt="Thumbnail" class="thumbnail">
+                        <div class="file-name">${name}</div>
+                        <div class="file-size">Size: ${size}</div>
+                        <a href="${file.href}" class="view-button" target="_blank">View File</a>
+                    `;
+
+                    fileGridForCategory.appendChild(fileItem);
+                });
+
+                categoryContainer.appendChild(fileGridForCategory);
+                fileGrid.appendChild(categoryContainer);
+            }
+
+            updateFilteredStatus(filteredFiles.length);
+        }
+
+
+        function filterFiles() {
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
+            const filteredFiles = filesData.filter(file => file.name.toLowerCase().includes(searchInput));
+
+            updateFilteredStatus(filteredFiles.length);
+
+            populateFileGrid(filteredFiles, searchInput);
+        }
+
+        function updateFilteredStatus(visibleCount) {
+            const filteredStatus = document.getElementById('filteredStatus');
+            filteredStatus.textContent = `Showing ${visibleCount} / ${totalFiles} videos`;
+        }
+
+        function copyDownloadLinksForFiltered() {
+            const filteredFiles = Array.from(document.querySelectorAll('.file-item a.view-button')).map(link => link.href);
+            copyToClipboard(filteredFiles.join('\n'));
+        }
+
+        function copyToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert('Links copied to the clipboard!');
+        }
+
+        populateFileGrid(filesData);
+    </script>
+</body>
+
+</html>
